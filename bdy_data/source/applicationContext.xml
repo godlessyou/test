@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context" xmlns:jdbc="http://www.springframework.org/schema/jdbc"  
+	xmlns:jee="http://www.springframework.org/schema/jee" xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:jpa="http://www.springframework.org/schema/data/jpa"
+	xsi:schemaLocation="
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.0.xsd		
+		http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-4.0.xsd
+		http://www.springframework.org/schema/jee http://www.springframework.org/schema/jee/spring-jee-4.0.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.0.xsd
+		http://www.springframework.org/schema/data/jpa http://www.springframework.org/schema/data/jpa/spring-jpa-1.3.xsd"
+		 
+	default-lazy-init="true">
+	
+	 
+
+	<description>Spring公共配置 </description>
+
+	<!-- 使用annotation 自动注册bean, 并保证@Required、@Autowired的属性被注入 -->
+	<context:component-scan base-package="com.tmkoo.searchapi">
+		<context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+		<context:exclude-filter type="annotation" expression="org.springframework.web.bind.annotation.ControllerAdvice"/>
+	</context:component-scan>
+	
+	<context:property-placeholder ignore-unresolvable="true"
+			location="classpath*:/application.properties" />	
+			
+		
+	<!-- 针对第一个数据源的 Jpa 事务配置  -->
+	<!-- Jpa Entity Manager 配置 -->
+	<bean id="entityManagerFactory" class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean"> 
+		<property name="dataSource" ref="dataSource"/>
+		<property name="jpaVendorAdapter" ref="hibernateJpaVendorAdapter"/>
+		<property name="packagesToScan" value="com.tmkoo.searchapi"/>
+		<property name="jpaProperties">
+			<props>
+				<!-- 命名规则 My_NAME->MyName -->
+				<prop key="hibernate.ejb.naming_strategy">org.hibernate.cfg.ImprovedNamingStrategy</prop>
+			</props>
+		</property>
+	</bean>
+<!-- 	<bean id="sessionFactory" factory-bean="entityManagerFactory" factory-method="getSessionFactory" /> -->
+	<bean id="hibernateJpaVendorAdapter" class="org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter">
+		<property name="databasePlatform">
+			<bean factory-method="getDialect" class="org.springside.modules.persistence.Hibernates">
+				<constructor-arg ref="dataSource"/>
+			</bean>
+		</property>
+	</bean>	
+	
+	<!-- Spring Data Jpa配置 -->
+ 	<jpa:repositories base-package="com.tmkoo.searchapi"  transaction-manager-ref="transactionManager" entity-manager-factory-ref="entityManagerFactory"/>
+   
+	<!-- Jpa 事务配置 -->
+	<bean id="transactionManager" class="org.springframework.orm.jpa.JpaTransactionManager">
+		<property name="entityManagerFactory" ref="entityManagerFactory"/>
+	</bean>
+	
+	<!-- 使用annotation定义事务 -->
+	<tx:annotation-driven transaction-manager="transactionManager" proxy-target-class="true" />
+	
+	
+	<bean class="com.tmkoo.searchapi.util.SpringContextUtils" lazy-init="false"/> 
+	
+	<bean id="taskExecutor" class="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor">
+		<property name="corePoolSize" value="10"/>
+		<property name="maxPoolSize" value="30"/>
+	</bean> 
+				
+   
+	<!-- JSR303 Validator定义 -->
+ 	<bean id="validator" class="org.springframework.validation.beanvalidation.LocalValidatorFactoryBean" />
+	<bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver"/>
+	
+	
+	<!-- 配置数据源gsDataSource使用的事物管理器-->
+	<!-- (事务管理)transaction manager, use JtaTransactionManager for global tx  
+    <bean id="transactionManager2"  
+        class="org.springframework.jdbc.datasource.DataSourceTransactionManager">  
+        <property name="dataSource" ref="gsDataSource" />  
+    </bean>
+    --> 
+    
+    <!-- 开启事务控制的注解支持 
+    <tx:annotation-driven transaction-manager="transactionManager2"/>
+	-->
+	
+	<!-- production环境
+ 	<beans profile="production">
+ 	
+ 	 -->
+ 	
+		
+	<!-- 数据源配置, 使用Tomcat JDBC连接池 -->		
+    <!-- tomcat jdbc pool数据源配置 -->          
+    <bean id="dataSource" class="org.apache.tomcat.jdbc.pool.DataSource" destroy-method="close">   
+        <property name="poolProperties"> 
+            <bean class="org.apache.tomcat.jdbc.pool.PoolProperties">   
+                <property name="driverClassName" value="${jdbc.driver}"/> 
+                <property name="url" value="${jdbc.url}"/>   
+                <property name="username" value="${jdbc.username}"/>   
+                <property name="password" value="${jdbc.password}"/>                
+                <property name="initialSize" value="${initialSize}"/>   
+                <property name="maxActive" value="${maxActive}"/>   
+                <property name="maxIdle" value="${maxIdle}"/>     
+                <property name="minIdle" value="${minIdle}"/>   
+                <property name="maxWait" value="${maxWait}"/> 
+				<property name="jmxEnabled" value="${jmxEnabled}"/> 
+                <property name="testWhileIdle" value="${testWhileIdle}"/> 
+                <property name="testOnBorrow" value="${testOnBorrow}"/>   
+                <property name="testOnReturn" value="${testOnReturn}"/>   
+                <property name="validationInterval" value="${validationInterval}"/>   
+                <property name="validationQuery" value="${validationQuery}"/>   
+                <property name="timeBetweenEvictionRunsMillis" value="${timeBetweenEvictionRunsMillis}"/> 
+                <property name="minEvictableIdleTimeMillis" value="${minEvictableIdleTimeMillis}"/>  
+                <property name="logAbandoned" value="${logAbandoned}"/>   
+                <property name="removeAbandoned" value="${removeAbandoned}"/>   
+                <property name="removeAbandonedTimeout" value="${removeAbandonedTimeout}"/>                          
+            </bean>   
+        </property>   
+    </bean> 
+    
+     <bean id="gsDataSource" class="org.apache.tomcat.jdbc.pool.DataSource" destroy-method="close">   
+        <property name="poolProperties"> 
+            <bean class="org.apache.tomcat.jdbc.pool.PoolProperties">   
+                <property name="driverClassName" value="${jdbc.driver}"/> 
+                <property name="url" value="${gs_jdbc.url}"/>   
+                <property name="username" value="${gs_jdbc.username}"/>   
+                <property name="password" value="${gs_jdbc.password}"/>                
+                <property name="initialSize" value="${initialSize}"/>   
+                <property name="maxActive" value="${maxActive}"/>   
+                <property name="maxIdle" value="${maxIdle}"/>     
+                <property name="minIdle" value="${minIdle}"/>   
+                <property name="maxWait" value="${maxWait}"/> 
+				<property name="jmxEnabled" value="${jmxEnabled}"/> 
+                <property name="testWhileIdle" value="${testWhileIdle}"/> 
+                <property name="testOnBorrow" value="${testOnBorrow}"/>   
+                <property name="testOnReturn" value="${testOnReturn}"/>   
+                <property name="validationInterval" value="${validationInterval}"/>   
+                <property name="validationQuery" value="${validationQuery}"/>   
+                <property name="timeBetweenEvictionRunsMillis" value="${timeBetweenEvictionRunsMillis}"/> 
+                <property name="minEvictableIdleTimeMillis" value="${minEvictableIdleTimeMillis}"/>  
+                <property name="logAbandoned" value="${logAbandoned}"/>   
+                <property name="removeAbandoned" value="${removeAbandoned}"/>   
+                <property name="removeAbandonedTimeout" value="${removeAbandonedTimeout}"/>                          
+            </bean>   
+        </property>   
+    </bean>
+	
+	
+	
+	 <!-- 定义调用对象和调用对象的方法 -->
+    <bean id="autoUpdateTask" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+	   <!-- 调用的类 -->
+	   <property name="targetObject" >
+	   		<ref bean="tmDataService" />
+	   </property>	
+	   <!-- 调用类中的方法 -->
+	   <property name="targetMethod" >
+	   		<value>updateAllCustData</value>    
+	   </property>    
+    </bean>
+
+    <!-- 定义触发时间为每天凌晨的21:30:00 -->
+    <bean id="trigger1" class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+	   	<property name="jobDetail" 	ref="autoUpdateTask" />
+	    <property name="cronExpression" value="0 10 01 * * ?" />
+    </bean>
+    
+    <!-- 总管理类 如果将lazy-init='false‘那么容器启动就会执行调度程序  -->
+    <bean id="startQuertz" lazy-init="true" autowire="no" class="org.springframework.scheduling.quartz.SchedulerFactoryBean">
+	    <property name="triggers">
+		    <list>
+		    	<ref bean="trigger1"/>		    
+		    </list>
+    	</property>
+    </bean>
+	
+	<!-- 更新提醒频率配置 -->
+	<bean id="updateConfig" class="com.tmkoo.searchapi.util.UpdateConfig" >
+	     <!-- 公告的更新周期 -->  
+		<property name="gonggao_interval" value="${gonggao_interval}" />
+		 <!-- 商标的更新周期 -->  
+		<property name="tm_interval" value="${tm_interval}" />
+				
+	</bean>	
+		
+	
+	<!-- 微服务的url以及数据库IP地址 -->
+	<bean id="serviceUrlConfig" class="com.tmkoo.searchapi.util.ServiceUrlConfig" >
+	     <!-- 确认合同信息 -->  
+		<property name="bdysysmUrl" value="${bdysysmUrl}" />	
+		<property name="bdyserviceUrl" value="${bdyserviceUrl}" />	
+		<property name="fileUrl" value="${fileUrl}" />		
+	</bean>	
+	
+	
+
+	<!-- 数据源配置,使用应用服务器的数据库连接池 
+ 	<jee:jndi-lookup id="dataSource" jndi-name="dbname" /> 
+	-->
+	
+</beans>
